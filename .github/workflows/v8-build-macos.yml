@@ -32,7 +32,7 @@ jobs:
           cd $GITHUB_WORKSPACE/v8
           fetch v8
           cd v8
-          git checkout 9.2.230.18
+          git checkout 11.1.277
           gclient sync
       - name: build v8 arm64
         run: |
