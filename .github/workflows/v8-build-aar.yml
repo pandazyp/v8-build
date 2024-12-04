@@ -1,0 +1,116 @@
+name: publish v8 AAR to release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag"
+        required: true
+        type: string
+
+jobs:
+  build-v8:
+    runs-on: lynx-infra-ubuntu-22.04-medium
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout repo.
+      uses: actions/checkout@v4
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.9"
+    - name: prepare cipd
+      run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools
+          export PATH=$PATH:$GITHUB_WORKSPACE/depot_tools
+          echo "$GITHUB_WORKSPACE/depot_tools" >> $GITHUB_PATH
+
+    - name: download v8
+      run: |
+          mkdir -p $GITHUB_WORKSPACE/v8
+          cd $GITHUB_WORKSPACE/v8
+          fetch v8
+          echo "target_os = ['android']" >> .gclient
+          cd v8
+          git checkout 11.1.277
+          gclient sync
+
+    - name: build v8 arm64
+      run: |
+          cd $GITHUB_WORKSPACE/v8/v8
+          gn gen out/arm64 --args='
+            v8_use_libm_trig_functions = false
+            v8_enable_i18n_support = false
+            v8_use_external_startup_data = false
+            is_component_build = true
+            is_debug = false
+            symbol_level = 0
+            target_cpu = "arm64"
+            v8_target_cpu = "arm64"
+            target_os = "android"'
+          $GITHUB_WORKSPACE/depot_tools/ninja -C out/arm64 
+          mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/arm64-v8a
+          cp out/arm64/libv8.cr.so ${GITHUB_WORKSPACE}/Android/v8so/libs/arm64-v8a/libv8_libfull.cr.so
+
+    - name: build v8 arm32
+      run: |
+          cd $GITHUB_WORKSPACE/v8/v8
+          gn gen out/arm32 --args='
+            v8_use_libm_trig_functions = false
+            v8_enable_i18n_support = false
+            v8_use_external_startup_data = false
+            is_component_build = true
+            is_debug = false
+            symbol_level = 0
+            target_cpu = "arm32"
+            v8_target_cpu = "arm32"
+            target_os = "android"'
+          $GITHUB_WORKSPACE/depot_tools/ninja -C out/arm32 -v
+          mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/armeabi-v7a
+          cp out/arm32/libv8.cr.so ${GITHUB_WORKSPACE}/Android/v8so/libs/armeabi-v7a/libv8_libfull.cr.so
+
+    - name: build v8 x86
+      run: |
+          cd $GITHUB_WORKSPACE/v8/v8
+          gn gen out/x86 --args='
+            v8_use_libm_trig_functions = false
+            v8_enable_i18n_support = false
+            v8_use_external_startup_data = false
+            is_component_build = true
+            is_debug = false
+            symbol_level = 0
+            target_cpu = "x86"
+            v8_target_cpu = "x86"
+            target_os = "android"'
+          $GITHUB_WORKSPACE/depot_tools/ninja -C out/x86 -v
+          mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/x86
+          cp out/x86/libv8.cr.so ${GITHUB_WORKSPACE}/Android/v8so/libs/x86/libv8_libfull.cr.so
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Grant execute permission for gradlew
+      run: cd Android &&  chmod +x ./gradlew
+
+    - name: Build the AAR
+      run: cd Android && ./gradlew :v8so:assemblerelease
+
+    - name: push to release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ github.event.inputs.tag }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: "Android/app/build/outputs/aar/v8so-release.aar"
