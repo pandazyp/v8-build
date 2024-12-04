@@ -1,0 +1,210 @@
+name: publish v8 AAR to release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag"
+        required: true
+        type: string
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  download-sources:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo.
+        uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Cache v8 sources
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/android/v8
+          key: ${{ runner.os }}-android-v8
+
+      - name: prepare cipd
+        run: |
+            mkdir -p $HOME/.cache/android/v8
+            cd $HOME/.cache/android/v8
+            git clone https://chromium.googlesource.com/chromium/tools/depot_tools
+            export PATH=$PATH:$HOME/.cache/android/v8/depot_tools
+            echo "$HOME/.cache/android/v8/depot_tools" >> $GITHUB_PATH
+  
+      - name: download v8
+        run: |
+            cd $HOME/.cache/android/v8
+            fetch v8
+            echo "target_os = ['android']" >> .gclient
+            cd v8
+            git checkout 11.1.277
+            gclient sync
+            ./build/install-build-deps.sh --android --arm --lib32
+            echo "$HOME/.cache/android/v8/v8/third_party/depot_tools" >> $GITHUB_PATH
+            pushd build
+            git apply $GITHUB_WORKSPACE/build.patch
+            popd
+            git apply $GITHUB_WORKSPACE/v8.patch
+            cp ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/12.0.5/lib/linux/aarch64/libunwind.a ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/
+            cp ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/12.0.5/lib/linux/arm/libunwind.a ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/
+            cp ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/12.0.5/lib/linux/i386/libunwind.a ./third_party/android_ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/
+
+
+  build-arm64-v8:
+    needs: download-sources
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore v8
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/android/v8
+          key: ${{ runner.os }}-android-v8
+      - name: build v8 arm64
+        run: |
+            cd $HOME/.cache/android/v8/v8
+            gn gen out/arm64 --args='
+              v8_use_libm_trig_functions = false
+              v8_enable_i18n_support = false
+              v8_use_external_startup_data = false
+              v8_enable_snapshot_compression = false
+              v8_use_zlib = false
+              default_min_sdk_version = 21
+              android_ndk_major_version = 21
+              target_os = "android"
+              target_cpu = "arm64"
+              is_component_build = true
+              use_custom_libcxx = false
+              is_debug = false
+              symbol_level = 0'
+            ninja -C out/arm64 v8
+            mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/arm64-v8a
+            cp $(find ./out/arm64 -maxdepth 1 -type f -name 'lib*.so') ${GITHUB_WORKSPACE}/Android/v8so/libs/arm64-v8a/
+  build-arm32-v8:
+    needs: download-sources
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore v8
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/android/v8
+          key: ${{ runner.os }}-android-v8
+      - name: build v8 arm32
+        run: |
+            cd $HOME/.cache/android/v8/v8
+            gn gen out/arm32 --args='
+              v8_use_libm_trig_functions = false
+              v8_enable_i18n_support = false
+              v8_use_external_startup_data = false
+              v8_enable_snapshot_compression = false
+              v8_use_zlib = false
+              default_min_sdk_version = 21
+              android_ndk_major_version = 21
+              target_os = "android"
+              target_cpu = "arm"
+              is_component_build = true
+              use_custom_libcxx = false
+              is_debug = false
+              symbol_level = 0'
+            ninja -C out/arm32 v8
+            mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/armeabi-v7a
+            cp $(find ./out/arm32 -maxdepth 1 -type f -name 'lib*.so') ${GITHUB_WORKSPACE}/Android/v8so/libs/armeabi-v7a
+  
+  build-x86-v8:
+    needs: download-sources
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Restore v8
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/android/v8
+          key: ${{ runner.os }}-android-v8
+      - name: build v8 x86
+        run: |
+            cd $HOME/.cache/android/v8/v8
+            gn gen out/x86 --args='
+              v8_use_libm_trig_functions = false
+              v8_enable_i18n_support = false
+              v8_use_external_startup_data = false
+              v8_enable_snapshot_compression = false
+              v8_use_zlib = false
+              default_min_sdk_version = 21
+              android_ndk_major_version = 21
+              target_os = "android"
+              target_cpu = "x86"
+              is_component_build = true
+              use_custom_libcxx = false
+              is_debug = false
+              symbol_level = 0'
+            ninja -C out/x86 v8
+            mkdir -p ${GITHUB_WORKSPACE}/Android/v8so/libs/x86
+            cp $(find ./out/x86 -maxdepth 1 -type f -name 'lib*.so') ${GITHUB_WORKSPACE}/Android/v8so/libs/x86
+  
+  build-v8-aar:
+    needs: [build-arm64-v8, build-arm32-v8, build-x86-v8]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore v8
+        uses: actions/cache@v4
+        with:
+          path: $HOME/.cache/android/v8
+          key: ${{ runner.os }}-android-v8
+
+      - name: Get all v8 android libs
+        run: |
+            mkdir -p Android/v8so/libs/arm64-v8a
+            mkdir -p Android/v8so/libs/armaebi-v7a
+            mkdir -p Android/v8so/libs/x86
+            cp $HOME/.cache/android/v8/v8/out/arm64/lib*.so Android/v8so/libs/arm64-v8a/
+            cp $HOME/.cache/android/v8/v8/out/arm32/lib*.so Android/v8so/libs/armeabi-v7a/
+            cp $HOME/.cache/android/v8/v8/out/x86/lib*.so Android/v8so/libs/x86/
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+  
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            $HOME/.gradle/caches
+            $HOME/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+  
+      - name: Grant execute permission for gradlew
+        run: cd Android &&  chmod +x ./gradlew
+  
+      - name: Build the AAR
+        run: cd Android && ./gradlew :v8so:assemblerelease
+  
+      - name: push to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "Android/v8so/build/outputs/aar/v8so-release.aar"
