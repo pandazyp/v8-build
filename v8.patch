@@ -1,0 +1,12 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index e1f23f17969..7899d42b003 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -6618,6 +6618,7 @@ if (is_component_build) {
+     configs = [ ":internal_config" ]
+ 
+     public_configs = [ ":external_config" ]
++    output_name = "v8_libfull"
+   }
+ 
+   v8_component("v8_for_testing") {
