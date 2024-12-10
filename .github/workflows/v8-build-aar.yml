@@ -7,10 +7,6 @@ on:
         description: "release tag"
         required: true
         type: string
-  pull_request:
-    branches:
-      - main
-
 jobs:
   build-v8-aar:
     runs-on: ubuntu-latest
