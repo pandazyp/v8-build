@@ -46,18 +46,21 @@ jobs:
               v8_enable_i18n_support = false
               v8_use_external_startup_data = false
               v8_enable_snapshot_compression = false
+              v8_enable_pointer_compression = false
+              v8_enable_pointer_compression_8gb = false
               v8_use_zlib = false
+
               target_os = "linux"
               target_cpu = "x64"
-              is_component_build = true
+              v8_monolithic = true
               use_custom_libcxx = false
               is_debug = false
               symbol_level = 0'
-            ninja -C out/x64 v8
+            ninja -C out/x64 v8_monolith
       - name: package v8 linux x64
         run: |
             mkdir -p v8-linux
-            cp ${GITHUB_WORKSPACE}/v8/v8/out/x64/lib*.so v8-linux/
+            cp ${GITHUB_WORKSPACE}/v8/v8/out/x64/obj/libv8_monolith.a v8-linux/
             zip -v v8_lib_linux.zip -r v8-linux
           
       - name: push to release
