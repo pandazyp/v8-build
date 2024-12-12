@@ -1,8 +1,14 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index e1f23f17969..7899d42b003 100644
+index e1f23f17969..777b6b4341d 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -6618,6 +6618,7 @@ if (is_component_build) {
+@@ -6613,11 +6613,13 @@ if (is_component_build) {
+     public_deps = [
+       ":v8_base",
+       ":v8_snapshot",
++      ":v8_libplatform"
+     ]
+ 
      configs = [ ":internal_config" ]
  
      public_configs = [ ":external_config" ]
