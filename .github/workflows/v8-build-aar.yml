@@ -64,7 +64,7 @@ jobs:
               use_custom_libcxx = false
               is_debug = false
               symbol_level = 0'
-            ninja -C out/arm64 v8
+            ninja -C out/arm64 -j4 v8
 
       - name: build v8 arm32
         run: |
@@ -85,7 +85,7 @@ jobs:
               use_custom_libcxx = false
               is_debug = false
               symbol_level = 0'
-            ninja -C out/arm32 v8
+            ninja -C out/arm32 -j4 v8
   
       - name: build v8 x86
         run: |
@@ -106,7 +106,7 @@ jobs:
               use_custom_libcxx = false
               is_debug = false
               symbol_level = 0'
-            ninja -C out/x86 v8
+            ninja -C out/x86 -j4 v8
   
       - name: Get all v8 android libs
         run: |
