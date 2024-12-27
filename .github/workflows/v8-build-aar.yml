@@ -139,8 +139,10 @@ jobs:
         run: cd Android && ./gradlew :v8so:assemblerelease
   
       - name: push to release
-        uses: AButler/upload-release-assets@v3.0
+        uses: ncipollo/release-action@v1
         with:
-          release-tag: ${{ github.event.inputs.tag }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: "Android/v8so/build/outputs/aar/v8so-release.aar"
+          tag: ${{ github.event.inputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "Android/v8so/build/outputs/aar/v8so-release.aar"
+          replacesArtifacts: true
+          allowUpdates: true
