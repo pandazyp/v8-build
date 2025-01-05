@@ -1,13 +1,21 @@
 diff --git a/config/android/BUILD.gn b/config/android/BUILD.gn
-index efdd3826e..120429166 100644
+index efdd3826e..c56c338fd 100644
 --- a/config/android/BUILD.gn
 +++ b/config/android/BUILD.gn
-@@ -80,7 +80,7 @@ config("compiler") {
- # that is Android-only. Please see that target for advice on what should go in
+@@ -81,6 +81,16 @@ config("compiler") {
  # :runtime_library vs. :compiler.
  config("runtime_library") {
--  libs = []
-+  libs = ["unwind"]
+   libs = []
++  if (!use_custom_libcxx) {
++    if (is_component_build && libcxx_is_shared) {
++      libs += [ "c++_shared" ]
++    } else {
++      libs += [ "c++_static" ]
++    }
++    libs += [ "c++abi" ]
++  }
++  libs += ["unwind"]
++
    ldflags = []
  
    # On 64-bit platforms, the only symbols provided by libandroid_support.a are

@@ -62,6 +62,7 @@ jobs:
               target_cpu = "arm64"
               is_component_build = true
               use_custom_libcxx = false
+              libcxx_is_shared = false
               is_debug = false
               symbol_level = 0'
             ninja -C out/arm64 -j4 v8
@@ -83,6 +84,7 @@ jobs:
               target_cpu = "arm"
               is_component_build = true
               use_custom_libcxx = false
+              libcxx_is_shared = false
               is_debug = false
               symbol_level = 0'
             ninja -C out/arm32 -j4 v8
@@ -104,6 +106,7 @@ jobs:
               target_cpu = "x86"
               is_component_build = true
               use_custom_libcxx = false
+              libcxx_is_shared = false
               is_debug = false
               symbol_level = 0'
             ninja -C out/x86 -j4 v8
